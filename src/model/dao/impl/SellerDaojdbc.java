@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,7 +26,38 @@ public class SellerDaojdbc implements SellerDao {
 
 	@Override
 	public void insert(Seller obj) {
-		// TODO Auto-generated method stub
+
+		PreparedStatement st = null;
+
+		try {
+			st = conn.prepareStatement("insert into seller " + " (Name, Email, BirthDate, BaseSalary, DepartmentId)"
+					+ " values " + "(?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
+
+			st.setString(1, obj.getName());
+			st.setString(2, obj.getEmail());
+			st.setDate(3, new java.sql.Date(obj.getBirthDate().getTime()));
+			st.setDouble(4, obj.getBaseSalary());
+			st.setInt(5, obj.getDepartament().getId());
+
+			int rowsAffected = st.executeUpdate();
+
+			if (rowsAffected > 0) {
+				ResultSet rs = st.getGeneratedKeys();
+
+				if (rs.next()) {
+					int id = rs.getInt(1);
+					obj.setId(id);
+				}
+				DB.closeResultSet(rs);
+			} else {
+				throw new DbException("Erro inesperado, nenhuma linha foi afetada!");
+			}
+
+		} catch (SQLException e) {
+			throw new DbException(e.getMessage());
+		} finally {
+			DB.closeStatement(st);
+		}
 
 	}
 
@@ -106,18 +138,20 @@ public class SellerDaojdbc implements SellerDao {
 
 			List<Seller> list = new ArrayList<>();
 
-			Map<Integer, Department> map = new HashMap<>(); // map é usado para controlar a não repetição de departamento
+			Map<Integer, Department> map = new HashMap<>(); // map é usado para controlar a não repetição de
+															// departamento
 
 			while (rs.next()) {
 
-				Department dep = map.get(rs.getInt("DepartmentId")); // "se o departamento já existir, eu vou reaproveita-lo"
+				Department dep = map.get(rs.getInt("DepartmentId")); // "se o departamento já existir, eu vou
+																		// reaproveita-lo"
 
 				if (dep == null) { // "se não existir"
-					dep = instantiateDepartment(rs); //"vou intanciá-lo"
+					dep = instantiateDepartment(rs); // "vou intanciá-lo"
 					map.put(rs.getInt("DepartmentId"), dep); // "e salvar dentro do Map"
 				}
 
-				Seller obj = instantiateSeller(rs, dep); // "Assim instancia todos os vendedores sem repetição de 
+				Seller obj = instantiateSeller(rs, dep); // "Assim instancia todos os vendedores sem repetição de
 				list.add(obj);// "Departamento"
 			}
 			return list;
