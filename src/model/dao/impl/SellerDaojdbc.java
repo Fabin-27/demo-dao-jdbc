@@ -94,7 +94,41 @@ public class SellerDaojdbc implements SellerDao {
 	@Override
 	public List<Seller> finadAll() {
 
-		return null;
+		PreparedStatement st = null;
+		ResultSet rs = null;
+
+		try {
+			st = conn.prepareStatement(
+					"select seller.*, department.name as depname " + " from seller inner join department "
+							+ " on seller.DepartmentId = department.Id " + " order by Name ");
+
+			rs = st.executeQuery();
+
+			List<Seller> list = new ArrayList<>();
+
+			Map<Integer, Department> map = new HashMap<>(); // map é usado para controlar a não repetição de departamento
+
+			while (rs.next()) {
+
+				Department dep = map.get(rs.getInt("DepartmentId")); // "se o departamento já existir, eu vou reaproveita-lo"
+
+				if (dep == null) { // "se não existir"
+					dep = instantiateDepartment(rs); //"vou intanciá-lo"
+					map.put(rs.getInt("DepartmentId"), dep); // "e salvar dentro do Map"
+				}
+
+				Seller obj = instantiateSeller(rs, dep); // "Assim instancia todos os vendedores sem repetição de 
+				list.add(obj);// "Departamento"
+			}
+			return list;
+
+		} catch (SQLException e) {
+			throw new DbException(e.getMessage());
+		} finally {
+
+			DB.closeStatement(st);
+			DB.closeResultSet(rs);
+		}
 	}
 
 	@Override
@@ -104,10 +138,8 @@ public class SellerDaojdbc implements SellerDao {
 		ResultSet rs = null;
 
 		try {
-			st = conn.prepareStatement(
-					"select seller.*, department.name as depname " 
-					+ " from seller inner join department "		
-					+ " on seller.DepartmentId = department.Id " 
+			st = conn.prepareStatement("select seller.*, department.name as depname "
+					+ " from seller inner join department " + " on seller.DepartmentId = department.Id "
 					+ " where DepartmentId = ?" + " order by Name ");
 
 			st.setInt(1, department.getId());
@@ -115,18 +147,18 @@ public class SellerDaojdbc implements SellerDao {
 			rs = st.executeQuery();
 
 			List<Seller> list = new ArrayList<>();
-			
+
 			Map<Integer, Department> map = new HashMap<>();
 
 			while (rs.next()) {
-				
+
 				Department dep = map.get(rs.getInt("DepartmentId"));
-				
+
 				if (dep == null) {
 					dep = instantiateDepartment(rs);
 					map.put(rs.getInt("DepartmentId"), dep);
 				}
-				
+
 				Seller obj = instantiateSeller(rs, dep);
 				list.add(obj);
 			}
